@@ -1,71 +1,80 @@
 import numpy as np
 import pandas as pd
-# import matplotlib.pyplot as plt   # Uncomment if matplotlib works on your system
+import os
+import kagglehub
 
-# Dataset: 5 students with 4 attributes
-data = {
-    'Internal': [78,85,72,90,75],
-    'Attendance': [85,90,80,95,82],
-    'Assignment': [80,88,75,92,78],
-    'Quiz': [75,82,70,88,73]
-}
-df = pd.DataFrame(data)
+# ==============================
+# STEP 1: Download Dataset
+# ==============================
+path = kagglehub.dataset_download(
+    "sadiajavedd/students-academic-performance-dataset"
+)
 
-print("RAW DATASET")
-print(df)
+# Locate CSV file
+files = os.listdir(path)
+csv_file = [f for f in files if f.endswith('.csv')][0]
+file_path = os.path.join(path, csv_file)
 
-# Mean and standard deviation
-mean = df.mean()
-std = df.std(ddof=1)
 
+# ==============================
+# STEP 2: Encode Categorical Columns
+# ==============================
+df_encoded = pd.get_dummies(df, drop_first=True)
+
+# ==============================
+# STEP 3: Calculate Mean
+# ==============================
+mean = df_encoded.mean()
 print("\nMEAN OF EACH ATTRIBUTE")
 print(mean)
-print("\nSTANDARD DEVIATION")
-print(std)
 
-# Standardize dataset (Z-score)
-Z = (df - mean) / std
-print("\nSTANDARDIZED DATA (Z-SCORES)")
-print(Z)
+# ==============================
+# STEP 4: Standardize Data (Z-score)
+# ==============================
+std = df_encoded.std(ddof=1)
+Z = (df_encoded - mean) / std
 
-# Covariance matrix
+# ==============================
+# STEP 5: Covariance Matrix
+# ==============================
 cov_matrix = np.cov(Z.T)
 print("\nCOVARIANCE MATRIX")
 print(cov_matrix)
 
-# Eigenvalues and eigenvectors
+# ==============================
+# STEP 6: Eigenvalues & Eigenvectors
+# ==============================
 eigenvalues, eigenvectors = np.linalg.eig(cov_matrix)
+
+# Sort eigenvalues & eigenvectors in descending order
+sorted_idx = np.argsort(eigenvalues)[::-1]
+eigenvalues = eigenvalues[sorted_idx]
+eigenvectors = eigenvectors[:, sorted_idx]
+
 print("\nEIGENVALUES")
 print(eigenvalues)
+
 print("\nEIGENVECTORS")
 print(eigenvectors)
 
-# Explained variance
-explained_variance = eigenvalues / np.sum(eigenvalues)
-cumulative_variance = np.cumsum(explained_variance)
+# ==============================
+# STEP 7: Principal Component Scores
+# ==============================
+PC_scores = np.dot(Z.values, eigenvectors)
 
-print("\nEXPLAINED VARIANCE (IN %)")
-print(explained_variance * 100)
-print("\nCUMULATIVE VARIANCE (IN %)")
-print(cumulative_variance * 100)
+# Convert to DataFrame for readability
+PC_scores = pd.DataFrame(
+    PC_scores,
+    columns=[f'PC{i+1}' for i in range(len(eigenvalues))]
+)
 
-# Optional: Scree Plot
-"""
-import matplotlib.pyplot as plt
-plt.plot(range(1, len(eigenvalues) + 1), eigenvalues, marker='o')
-plt.xlabel("Principal Component")
-plt.ylabel("Eigenvalue")
-plt.title("Scree Plot")
-plt.grid()
-plt.show()
-"""
+print("\nPRINCIPAL COMPONENT SCORES (First 5 Rows)")
+print(PC_scores.head())
 
-# Principal Component Scores
-PC_scores = Z.dot(eigenvectors)
-print("\nPRINCIPAL COMPONENT SCORES")
-print(PC_scores)
+# ==============================
+# STEP 8: Optional - First 3 PCs Only
+# ==============================
+PC_top3 = PC_scores[['PC1','PC2','PC3']]
+print("\nFIRST 3 PRINCIPAL COMPONENTS (First 5 Rows)")
+print(PC_top3)
 
-# Reduce dataset to 2 principal components (PC1 and PC2)
-PC_reduced = PC_scores.iloc[:, :2]
-print("\nREDUCED DATASET (USING PC1 AND PC2)")
-print(PC_reduced)
